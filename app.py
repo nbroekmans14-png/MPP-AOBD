@@ -39,19 +39,11 @@ st.markdown("""
     .header-box { background-color: #004a99; color: white !important; padding: 20px; border-radius: 12px; text-align: center; border-bottom: 4px solid #ffcc00; }
     .info-box { background-color: #fff9c4; color: #333 !important; padding: 15px; border-radius: 8px; text-align: center; margin-top: 15px; border: 1px solid #fbc02d; font-weight: bold; font-size: 1.1rem; }
     .match-card { background: #f1f3f5; padding: 10px; border-radius: 8px; border-left: 5px solid #004a99; margin-top: 10px; font-weight: bold; color: #004a99 !important; }
-    .stRadio [data-testid="stMarkdownContainer"] p { color: #1a1a1a !important; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 # Présentation
-st.markdown("""
-    <div class="header-box">
-        <h1>🏸 Le MPP de l'AOBD</h1>
-        <p>1pt par bonne réponse + 3pts bonus si 8/8.</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Affichage du message de l'Admin
+st.markdown('<div class="header-box"><h1>🏸 Le MPP de l\'AOBD</h1><p>1pt par bonne réponse + 3pts bonus si 8/8.</p></div>', unsafe_allow_html=True)
 st.markdown(f'<div class="info-box">📢 {load_info()}</div>', unsafe_allow_html=True)
 
 # 3. INTERFACE JOUEUR (VOTE)
@@ -64,14 +56,14 @@ matchs = ["Simple Homme 1", "Simple Homme 2", "Simple Dame 1", "Simple Dame 2",
 if nom_input:
     df_v_check = load_data(VOTES_FILE)
     
-    # Vérification si le joueur a déjà voté
-    deja_vote = False
+    # Vérifie si le nom est déjà dans les votes EN COURS (pas le classement général)
+    deja_pries = False
     if not df_v_check.empty and "Joueur" in df_v_check.columns:
         if nom_input.lower() in df_v_check["Joueur"].str.lower().values:
-            deja_vote = True
+            deja_pries = True
 
-    if deja_vote:
-        st.warning(f"⚠️ {nom_input}, tu as déjà validé tes pronos pour cette rencontre !")
+    if deja_pries:
+        st.warning(f"⚠️ Le nom '{nom_input}' a déjà été utilisé pour cette rencontre. Attends la prochaine journée !")
     else:
         pronos = {}
         for m in matchs:
@@ -107,47 +99,59 @@ if not df_scores.empty:
         return "⚪ ="
 
     df_scores['Evolution'] = df_scores.apply(format_tendance, axis=1)
-    df_display = df_scores[['Rang', 'Evolution', 'Joueur', 'Points']]
-    st.table(df_display)
+    st.table(df_scores[['Rang', 'Evolution', 'Joueur', 'Points']])
 else:
-    st.info("Le classement s'affichera ici après la première rencontre.")
+    st.info("Le classement s'affichera après la première rencontre.")
 
 # 5. ESPACE ADMIN
 st.divider()
 with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
     mdp = st.text_input("Code secret :", type="password")
-    
     if mdp == "2003":
-        # CRÉATION DES ONGLETS BIEN DISTINCTS
         tab_ann, tab_res, tab_vot, tab_dan = st.tabs(["📢 Annonce", "✅ Résultats", "👥 Votes", "⚠️ Danger"])
 
         with tab_ann:
-            st.write("### Modifier l'annonce")
-            nouvelle_info = st.text_area("Ex: Match contre Vannes - Jeudi 20h", value=load_info())
-            if st.button("Mettre à jour l'annonce"):
+            nouvelle_info = st.text_area("Annonce :", value=load_info())
+            if st.button("Mettre à jour"):
                 save_info(nouvelle_info)
-                st.success("Annonce mise à jour !")
                 st.rerun()
 
         with tab_res:
-            st.write("### Valider la rencontre")
             reels = {m: st.selectbox(f"Gagnant {m}", ["-", "St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
-            if st.button("✅ CALCULER LES POINTS ET CLOTURER"):
+            if st.button("✅ VALIDER ET CLÔTURER LA JOURNÉE"):
                 df_v = load_data(VOTES_FILE)
-                if df_v.empty:
-                    st.error("Aucun vote enregistré pour le moment !")
-                elif any(v == "-" for v in reels.values()):
-                    st.error("Veuillez remplir TOUS les résultats.")
+                if df_v.empty: st.error("Aucun vote !")
+                elif any(v == "-" for v in reels.values()): st.error("Remplis tout !")
                 else:
                     df_gen = load_data(SCORES_FILE)
-                    
-                    # Sauvegarde du rang actuel pour l'évolution
                     if not df_gen.empty:
                         df_gen = df_gen.sort_values(by="Points", ascending=False).reset_index(drop=True)
                         df_gen['AncienRang'] = range(1, len(df_gen) + 1)
                     else:
                         df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
 
-                    # Calcul des points par joueur
-                    for index, row in df_v.iterrows():
-                        joueur = row['Joueur']
+                    for _, row in df_v.iterrows():
+                        joueur, bons = row['Joueur'], sum(1 for m in matchs if row[m] == reels[m])
+                        pts_j = bons + (3 if bons == 8 else 0)
+                        if joueur in df_gen['Joueur'].values:
+                            df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts_j
+                        else:
+                            df_gen = pd.concat([df_gen, pd.DataFrame([{"Joueur": joueur, "Points": pts_j, "AncienRang": 999}])], ignore_index=True)
+                    
+                    save_data(df_gen, SCORES_FILE)
+                    if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
+                    st.success("Journée clôturée !")
+                    st.rerun()
+
+        with tab_vot:
+            df_v_d = load_data(VOTES_FILE)
+            if not df_v_d.empty:
+                st.write(f"Participants ({len(df_v_d)}) :")
+                st.dataframe(df_v_d[["Joueur"]])
+            else: st.info("Aucun vote en cours.")
+
+        with tab_dan:
+            if st.button("🗑️ RESET TOTAL"):
+                for f in [SCORES_FILE, VOTES_FILE]:
+                    if os.path.exists(f): os.remove(f)
+                st.rerun()
