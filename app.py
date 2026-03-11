@@ -68,7 +68,7 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# --- NOUVEAU : AFFICHAGE DU MESSAGE ADMIN ---
+# AFFICHAGE DU MESSAGE ADMIN
 msg_admin = load_message()
 st.markdown(f'<div class="admin-msg">📢 {msg_admin}</div>', unsafe_allow_html=True)
 
@@ -96,35 +96,43 @@ if nom:
 
 st.divider()
 
-# 4. CLASSEMENT GÉNÉRAL (AVEC ÉVOLUTION)
+# 4. CLASSEMENT GÉNÉRAL (AVEC ÉVOLUTION CHIFFRÉE)
 st.subheader("🏆 CLASSEMENT GÉNÉRAL")
 df_scores = load_data(SCORES_FILE)
 
 if not df_scores.empty:
-    # On s'assure que les colonnes nécessaires existent
     if "AncienRang" not in df_scores.columns:
         df_scores["AncienRang"] = 0
     
-    # Calcul du Rang Actuel
+    # On trie par points
     df_scores = df_scores.sort_values(by="Points", ascending=False).reset_index(drop=True)
-    df_scores["RangActuel"] = df_scores.index + 1
+    # On définit le rang (1, 2, 3...)
+    df_scores["Rang"] = df_scores.index + 1
     
-    # Fonction pour définir l'icône d'évolution
-    def get_evolution(row):
-        if row["AncienRang"] == 0: return "🆕"
-        if row["RangActuel"] < row["AncienRang"]: return "🔼"
-        if row["RangActuel"] > row["AncienRang"]: return "🔽"
-        return "〓"
+    # Fonction pour calculer l'évolution (+2, -1, etc.)
+    def get_evolution_label(row):
+        if row["AncienRang"] == 0: 
+            return "🆕"
+        diff = int(row["AncienRang"]) - int(row["Rang"])
+        if diff > 0: 
+            return f"🟢 +{diff}"
+        elif diff < 0: 
+            return f"🔴 {diff}"
+        else: 
+            return "〓"
 
-    df_scores["Évo"] = df_scores.apply(get_evolution, axis=1)
+    df_scores["Évolution"] = df_scores.apply(get_evolution_label, axis=1)
     
-    # Affichage propre
-    classement_final = df_scores[["Évo", "Joueur", "Points"]].copy()
-    st.table(classement_final)
+    # --- SUPPRESSION DE LA COLONNE D'INDEX ET PRÉPARATION DE L'AFFICHAGE ---
+    # On sélectionne les colonnes dans l'ordre voulu
+    classement_final = df_scores[["Rang", "Évolution", "Joueur", "Points"]]
+    
+    # On affiche le tableau sans la colonne d'index de gauche
+    st.table(classement_final.set_index("Rang"))
 else:
     st.info("Le classement sera mis à jour après la validation des matchs par l'admin.")
 
-# 5. ESPACE ADMIN (ONGLETS SÉCURISÉS)
+# 5. ESPACE ADMIN
 st.divider()
 with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
     mdp = st.text_input("Code secret :", type="password")
@@ -134,61 +142,4 @@ with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
 
         with tab1:
             st.write("### Entrer les résultats réels")
-            reels = {m: st.selectbox(f"Gagnant {m}", ["St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
-            
-            if st.button("✅ CALCULER ET CLOTURER LA JOURNÉE"):
-                df_v = load_data(VOTES_FILE)
-                if df_v.empty:
-                    st.error("Personne n'a encore voté !")
-                else:
-                    df_gen = load_data(SCORES_FILE)
-                    if df_gen.empty:
-                        df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
-                    else:
-                        # Avant de calculer, on enregistre la position actuelle comme "AncienRang"
-                        df_gen = df_gen.sort_values(by="Points", ascending=False).reset_index(drop=True)
-                        df_gen["AncienRang"] = df_gen.index + 1
-
-                    for index, row in df_v.iterrows():
-                        joueur = row['Joueur']
-                        bons = sum(1 for m in matchs if row[m] == reels[m])
-                        pts_journee = bons + (3 if bons == 8 else 0)
-                        
-                        if joueur in df_gen['Joueur'].values:
-                            df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts_journee
-                        else:
-                            new_row = pd.DataFrame([{"Joueur": joueur, "Points": pts_journee, "AncienRang": 0}])
-                            df_gen = pd.concat([df_gen, new_row], ignore_index=True)
-                    
-                    save_data(df_gen, SCORES_FILE)
-                    if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
-                    st.success("Classement mis à jour !")
-                    st.rerun()
-
-        with tab2:
-            st.write("### Liste des joueurs ayant voté")
-            df_v = load_data(VOTES_FILE)
-            if not df_v.empty:
-                st.dataframe(df_v[["Joueur"]], use_container_width=True)
-            else:
-                st.info("Aucun vote pour le moment.")
-
-        with tab3:
-            st.write("### Modifier l'annonce de la rencontre")
-            current_msg = load_message()
-            new_msg = st.text_area("Écris ton message ici (Lieu, Date, Adversaire...)", current_msg)
-            if st.button("Enregistrer le message"):
-                save_message(new_msg)
-                st.success("Message mis à jour !")
-                st.rerun()
-
-        with tab4:
-            st.write("### Réinitialisation complète")
-            if st.button("🗑️ Effacer TOUT"):
-                if os.path.exists(SCORES_FILE): os.remove(SCORES_FILE)
-                if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
-                if os.path.exists(MSG_FILE): os.remove(MSG_FILE)
-                st.rerun()
-            
-    elif mdp != "":
-        st.error("Mot de passe incorrect.")
+            reels = {m: st.selectbox(f"Gagnant {m}", ["St-Nolff", "Adversaire"],
