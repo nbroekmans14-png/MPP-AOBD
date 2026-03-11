@@ -60,7 +60,7 @@ st.markdown("""
     .header-box h1 { color: white !important; font-size: 1.8rem !important; margin-bottom: 8px; }
     .header-box p { color: #ffeb3b !important; font-size: 0.95rem !important; font-weight: 500; }
     
-    /* Annonce Admin - Police plus grande */
+    /* Annonce Admin - Police agrandie */
     .admin-msg {
         background-color: #f0f2f6 !important; 
         color: #31333F !important;
@@ -68,7 +68,7 @@ st.markdown("""
         border-radius: 12px;
         text-align: center;
         font-weight: 700;
-        font-size: 1.15rem !important; /* Police agrandie */
+        font-size: 1.15rem !important;
         margin: 15px 0;
         border: 1px solid #d1d5db;
     }
@@ -102,7 +102,7 @@ st.markdown("""
 # --- 1. TITRE ET RÈGLES ---
 st.markdown('<div class="header-box"><h1>Le MPP de l\'AOBD</h1><p>1pt par bon prono • +3pts bonus si 8/8</p></div>', unsafe_allow_html=True)
 
-# --- 2. ANNONCE (Nouvelle place : juste sous le titre) ---
+# --- 2. ANNONCE ---
 st.markdown(f'<div class="admin-msg">📢 {load_message()}</div>', unsafe_allow_html=True)
 
 # --- 3. PHOTO EQUIPE ---
@@ -133,15 +133,17 @@ if nom:
         
     if st.button("🚀 VALIDER MA GRILLE"):
         df_v = load_data(VOTES_FILE)
+        
+        # --- VERIFICATION ANTI-DOUBLON (Insensible à la casse) ---
         if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
-            st.error(f"Désolé {nom}, tu as déjà voté ! 🐺")
+            st.error(f"Désolé {nom}, tu as déjà validé tes pronos pour cette rencontre ! 🐺")
         else:
             nouveau_vote = {"Joueur": nom}
             cleaned_pronos = {k: ("St-Nolff" if v == "St-Nolff 🐺" else v) for k, v in pronos.items()}
             nouveau_vote.update(cleaned_pronos)
             df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
             save_data(df_v, VOTES_FILE)
-            st.success("Grille validée ! Aouuuuuuh 🐺")
+            st.success("Grille validée ! Bonne chance la meute 🐺")
             st.balloons()
 
 st.divider()
