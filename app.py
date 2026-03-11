@@ -110,4 +110,18 @@ else:
 # 5. ESPACE ADMIN
 st.divider()
 with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
-    mdp = st.text_input("Code secret :", type="
+    mdp = st.text_input("Code secret :", type="password")
+    
+    if mdp == "2003":
+        tab1, tab2, tab3, tab4 = st.tabs(["📢 Annonce", "✅ Résultats", "👥 Votes", "⚠️ Danger"])
+
+        with tab1:
+            st.write("### Modifier l'annonce")
+            nouvelle_info = st.text_area("Ex: Match contre Vannes à domicile - Jeudi 20h", value=load_info())
+            if st.button("Mettre à jour l'annonce"):
+                save_info(nouvelle_info)
+                st.success("Annonce mise à jour !")
+                st.rerun()
+
+        with tab2:
+            st.write("### Valider la rencontre")
