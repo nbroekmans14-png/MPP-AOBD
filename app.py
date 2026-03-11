@@ -56,14 +56,14 @@ matchs = ["Simple Homme 1", "Simple Homme 2", "Simple Dame 1", "Simple Dame 2",
 if nom_input:
     df_v_check = load_data(VOTES_FILE)
     
-    # Vérifie si le nom est déjà dans les votes EN COURS (pas le classement général)
-    deja_pries = False
+    # Vérifie uniquement si le nom est déjà dans les votes EN COURS
+    deja_prie = False
     if not df_v_check.empty and "Joueur" in df_v_check.columns:
         if nom_input.lower() in df_v_check["Joueur"].str.lower().values:
-            deja_pries = True
+            deja_prie = True
 
-    if deja_pries:
-        st.warning(f"⚠️ Le nom '{nom_input}' a déjà été utilisé pour cette rencontre. Attends la prochaine journée !")
+    if deja_prie:
+        st.warning(f"⚠️ Quelqu'un a déjà voté avec le nom '{nom_input}' pour cette rencontre.")
     else:
         pronos = {}
         for m in matchs:
@@ -76,17 +76,18 @@ if nom_input:
             nouveau_vote.update(pronos)
             df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
             save_data(df_v, VOTES_FILE)
-            st.success("Enregistré ! Bonne chance.")
+            st.success("C'est enregistré ! Bonne chance pour tes pronos.")
             st.balloons()
             st.rerun()
 
 st.divider()
 
-# 4. CLASSEMENT GÉNÉRAL AVEC ÉVOLUTION
+# 4. CLASSEMENT GÉNÉRAL AVEC ÉVOLUTION (+/- places)
 st.subheader("🏆 CLASSEMENT GÉNÉRAL")
 df_scores = load_data(SCORES_FILE)
 
 if not df_scores.empty:
+    # On trie pour définir le rang actuel
     df_scores = df_scores.sort_values(by="Points", ascending=False).reset_index(drop=True)
     df_scores['Rang'] = range(1, len(df_scores) + 1)
 
@@ -101,7 +102,7 @@ if not df_scores.empty:
     df_scores['Evolution'] = df_scores.apply(format_tendance, axis=1)
     st.table(df_scores[['Rang', 'Evolution', 'Joueur', 'Points']])
 else:
-    st.info("Le classement s'affichera après la première rencontre.")
+    st.info("Le classement sera mis à jour après la validation des matchs par l'admin.")
 
 # 5. ESPACE ADMIN
 st.divider()
@@ -111,19 +112,24 @@ with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
         tab_ann, tab_res, tab_vot, tab_dan = st.tabs(["📢 Annonce", "✅ Résultats", "👥 Votes", "⚠️ Danger"])
 
         with tab_ann:
-            nouvelle_info = st.text_area("Annonce :", value=load_info())
-            if st.button("Mettre à jour"):
+            st.write("### Modifier l'annonce")
+            nouvelle_info = st.text_area("Texte (Date, lieu, adversaire...)", value=load_info())
+            if st.button("Mettre à jour l'annonce"):
                 save_info(nouvelle_info)
+                st.success("Annonce mise à jour !")
                 st.rerun()
 
         with tab_res:
+            st.write("### Valider la rencontre")
             reels = {m: st.selectbox(f"Gagnant {m}", ["-", "St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
-            if st.button("✅ VALIDER ET CLÔTURER LA JOURNÉE"):
+            if st.button("✅ CALCULER LES POINTS ET CLÔTURER"):
                 df_v = load_data(VOTES_FILE)
-                if df_v.empty: st.error("Aucun vote !")
-                elif any(v == "-" for v in reels.values()): st.error("Remplis tout !")
+                if df_v.empty: st.error("Personne n'a encore voté !")
+                elif any(v == "-" for v in reels.values()): st.error("Veuillez remplir tous les scores.")
                 else:
                     df_gen = load_data(SCORES_FILE)
+                    
+                    # Avant la mise à jour, on enregistre le rang actuel comme "AncienRang"
                     if not df_gen.empty:
                         df_gen = df_gen.sort_values(by="Points", ascending=False).reset_index(drop=True)
                         df_gen['AncienRang'] = range(1, len(df_gen) + 1)
@@ -131,8 +137,10 @@ with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
                         df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
 
                     for _, row in df_v.iterrows():
-                        joueur, bons = row['Joueur'], sum(1 for m in matchs if row[m] == reels[m])
+                        joueur = row['Joueur']
+                        bons = sum(1 for m in matchs if row[m] == reels[m])
                         pts_j = bons + (3 if bons == 8 else 0)
+                        
                         if joueur in df_gen['Joueur'].values:
                             df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts_j
                         else:
@@ -140,18 +148,24 @@ with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
                     
                     save_data(df_gen, SCORES_FILE)
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
-                    st.success("Journée clôturée !")
+                    st.success("Classement mis à jour et votes archivés !")
                     st.rerun()
 
         with tab_vot:
+            st.write("### Suivi des votes pour cette journée")
             df_v_d = load_data(VOTES_FILE)
             if not df_v_d.empty:
-                st.write(f"Participants ({len(df_v_d)}) :")
-                st.dataframe(df_v_d[["Joueur"]])
-            else: st.info("Aucun vote en cours.")
+                st.write(f"Nombre de participants : **{len(df_v_d)}**")
+                st.dataframe(df_v_d[["Joueur"]], use_container_width=True)
+            else:
+                st.info("Aucun vote enregistré pour le moment.")
 
         with tab_dan:
-            if st.button("🗑️ RESET TOTAL"):
-                for f in [SCORES_FILE, VOTES_FILE]:
-                    if os.path.exists(f): os.remove(f)
+            st.write("### Zone de réinitialisation")
+            if st.button("🗑️ RÉINITIALISER LE CLASSEMENT GÉNÉRAL"):
+                if os.path.exists(SCORES_FILE): os.remove(SCORES_FILE)
+                if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
+                st.warning("Tout a été supprimé.")
                 st.rerun()
+    elif mdp != "":
+        st.error("Mot de passe incorrect.")
