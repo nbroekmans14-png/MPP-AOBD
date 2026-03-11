@@ -32,13 +32,12 @@ def load_message():
             return f.read()
     return "Préparez vos pronos pour la prochaine rencontre !"
 
-# 2. DESIGN PERSONNALISÉ (THÈME ROUGE PÂLE)
+# 2. DESIGN PERSONNALISÉ (ROUGE PÂLE & ÉPURÉ)
 st.markdown("""
     <style>
-    /* Fond général de l'application */
-    .stApp { background-color: #fffafa; }
+    .stApp { background-color: #ffffff; }
     
-    /* Header principal en dégradé de rouge */
+    /* Header principal */
     .header-box { 
         background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
         color: white !important; 
@@ -53,42 +52,40 @@ st.markdown("""
     
     /* Message Admin */
     .admin-msg {
-        background-color: #ffffff;
-        color: #d32f2f;
+        background-color: #ffebee;
+        color: #b71c1c;
         padding: 15px;
         border-radius: 12px;
-        border-left: 6px solid #d32f2f;
         text-align: center;
         font-weight: 600;
         margin: 15px 0;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
 
-    /* Titres de matchs (Fond rouge pâle) */
+    /* Bloc de match unifié */
+    .match-container {
+        border: 1px solid #ffcdd2;
+        border-radius: 12px;
+        margin-bottom: 15px;
+        overflow: hidden;
+    }
+
     .match-header { 
         background-color: #ffebee; 
-        padding: 8px 12px; 
-        border-radius: 10px 10px 0px 0px; 
-        border-bottom: 2px solid #ffcdd2;
+        padding: 10px 15px; 
         font-weight: 800; 
-        color: #b71c1c; 
-        margin-top: 15px;
+        color: #000000; /* Écriture noire demandée */
         display: flex;
         align-items: center;
         gap: 10px;
+        border-bottom: 1px solid #ffcdd2;
     }
 
-    /* Boîte de vote */
-    .vote-box {
-        background: white;
-        padding: 12px;
-        border-radius: 0px 0px 10px 10px;
-        border: 1px solid #ffcdd2;
-        margin-bottom: 10px;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    .vote-area {
+        padding: 10px 15px;
+        background-color: #ffffff;
     }
     
-    /* Personnalisation des boutons */
+    /* Boutons de validation */
     .stButton>button {
         width: 100%;
         border-radius: 12px;
@@ -97,21 +94,11 @@ st.markdown("""
         color: white;
         font-weight: bold;
         border: none;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        transition: 0.3s;
+        transition: 0.2s;
     }
     .stButton>button:hover {
         background-color: #b71c1c;
-        border: none;
-        color: white;
-        transform: translateY(-2px);
-    }
-
-    /* Style du classement */
-    .stTable {
-        background-color: white;
-        border-radius: 10px;
-        overflow: hidden;
+        transform: scale(1.02);
     }
     </style>
     """, unsafe_allow_html=True)
@@ -125,7 +112,6 @@ try:
 except:
     pass
 
-# --- MESSAGE ANNONCE ---
 st.markdown(f'<div class="admin-msg">📢 {load_message()}</div>', unsafe_allow_html=True)
 
 # 3. ESPACE VOTE
@@ -146,19 +132,21 @@ match_data = [
 if nom:
     pronos = {}
     for match_name, emoji in match_data:
-        # En-tête du match en rouge pâle
-        st.markdown(f'<div class="match-header">{emoji} {match_name}</div>', unsafe_allow_html=True)
+        # Structure en un seul bloc sans bande blanche séparatrice
+        st.markdown(f'''
+            <div class="match-container">
+                <div class="match-header">{emoji} {match_name}</div>
+            </div>
+        ''', unsafe_allow_html=True)
         
-        with st.container():
-            st.markdown('<div class="vote-box">', unsafe_allow_html=True)
-            pronos[match_name] = st.radio(
-                f"Vainqueur {match_name}", 
-                ["St-Nolff 🐺", "Adversaire"], 
-                key=f"p_{match_name}", 
-                horizontal=True, 
-                label_visibility="collapsed"
-            )
-            st.markdown('</div>', unsafe_allow_html=True)
+        # Le widget radio est placé juste en dessous du titre
+        pronos[match_name] = st.radio(
+            f"Vainqueur {match_name}", 
+            ["St-Nolff 🐺", "Adversaire"], 
+            key=f"p_{match_name}", 
+            horizontal=True, 
+            label_visibility="collapsed"
+        )
         
     st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🚀 VALIDER MA GRILLE"):
