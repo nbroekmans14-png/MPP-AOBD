@@ -115,7 +115,7 @@ st.divider()
 
 # --- 4. ESPACE VOTE ---
 st.subheader("🎯 Fais tes pronos")
-nom = st.text_input("Ton Prénom & Nom", placeholder="Ex: Lucas B").strip()
+nom_input = st.text_input("Ton Prénom & Nom", placeholder="Ex: Lucas B").strip()
 
 match_data = [
     ("Simple Homme 1", "👨"), ("Simple Homme 2", "👨"),
@@ -124,7 +124,7 @@ match_data = [
     ("Mixte 1", "👫"), ("Mixte 2", "👫")
 ]
 
-if nom:
+if nom_input:
     pronos = {}
     for match_name, emoji in match_data:
         st.markdown(f'<div class="match-header">{emoji} {match_name}</div>', unsafe_allow_html=True)
@@ -134,11 +134,11 @@ if nom:
     if st.button("🚀 VALIDER MA GRILLE"):
         df_v = load_data(VOTES_FILE)
         
-        # --- VERIFICATION ANTI-DOUBLON (Insensible à la casse) ---
-        if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
-            st.error(f"Désolé {nom}, tu as déjà validé tes pronos pour cette rencontre ! 🐺")
+        # Vérification anti-doublon journalière (Lisa vs lisa)
+        if not df_v.empty and nom_input.lower() in df_v["Joueur"].str.lower().values:
+            st.error(f"Désolé {nom_input}, tu as déjà validé tes pronos pour cette rencontre ! 🐺")
         else:
-            nouveau_vote = {"Joueur": nom}
+            nouveau_vote = {"Joueur": nom_input}
             cleaned_pronos = {k: ("St-Nolff" if v == "St-Nolff 🐺" else v) for k, v in pronos.items()}
             nouveau_vote.update(cleaned_pronos)
             df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
@@ -187,13 +187,21 @@ with st.expander("🛠️ Administration"):
                         df_gen["AncienRang"] = df_gen.index + 1
                     else:
                         df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
+
                     for _, row in df_v.iterrows():
-                        j, b = row['Joueur'], sum(1 for m, _ in match_data if row[m] == reels[m])
-                        pts = b + (3 if b == 8 else 0)
-                        if j in df_gen['Joueur'].values:
-                            df_gen.loc[df_gen['Joueur'] == j, 'Points'] += pts
+                        j_nom = row['Joueur']
+                        b = sum(1 for m, _ in match_data if row[m] == reels[m])
+                        pts_jour = b + (3 if b == 8 else 0)
+                        
+                        # --- FUSION INTELLIGENTE (Lisa = lisa) ---
+                        # On cherche si le joueur existe déjà (insensible à la casse)
+                        mask = df_gen['Joueur'].str.lower() == j_nom.lower()
+                        if mask.any():
+                            df_gen.loc[mask, 'Points'] += pts_jour
                         else:
-                            df_gen = pd.concat([df_gen, pd.DataFrame([{"Joueur": j, "Points": pts, "AncienRang": 0}])], ignore_index=True)
+                            new_line = pd.DataFrame([{"Joueur": j_nom, "Points": pts_jour, "AncienRang": 0}])
+                            df_gen = pd.concat([df_gen, new_line], ignore_index=True)
+                    
                     save_data(df_gen, SCORES_FILE)
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
                     st.rerun()
