@@ -32,7 +32,7 @@ def load_message():
             return f.read()
     return "Préparez vos pronos pour la prochaine rencontre !"
 
-# 2. DESIGN PERSONNALISÉ (ROUGE PÂLE & ÉPURÉ)
+# 2. DESIGN PERSONNALISÉ (GRIS PALE & ROUGE)
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; }
@@ -52,8 +52,8 @@ st.markdown("""
     
     /* Message Admin */
     .admin-msg {
-        background-color: #ffebee;
-        color: #b71c1c;
+        background-color: #f0f2f6; /* Gris pale Streamlit */
+        color: #31333F;
         padding: 15px;
         border-radius: 12px;
         text-align: center;
@@ -63,42 +63,37 @@ st.markdown("""
 
     /* Bloc de match unifié */
     .match-container {
-        border: 1px solid #ffcdd2;
+        border: 1px solid #f0f2f6;
         border-radius: 12px;
-        margin-bottom: 15px;
+        margin-bottom: 5px;
         overflow: hidden;
     }
 
     .match-header { 
-        background-color: #ffebee; 
+        background-color: #f0f2f6; /* Gris pale identique au input */
         padding: 10px 15px; 
-        font-weight: 800; 
-        color: #000000; /* Écriture noire demandée */
+        font-weight: 700; 
+        color: #000000;
         display: flex;
         align-items: center;
         gap: 10px;
-        border-bottom: 1px solid #ffcdd2;
-    }
-
-    .vote-area {
-        padding: 10px 15px;
-        background-color: #ffffff;
     }
     
-    /* Boutons de validation */
+    /* Boutons de validation en Gris Pale */
     .stButton>button {
         width: 100%;
         border-radius: 12px;
         height: 3.5em;
-        background-color: #d32f2f;
-        color: white;
+        background-color: #f0f2f6;
+        color: #31333F;
         font-weight: bold;
-        border: none;
+        border: 1px solid #d1d5db;
         transition: 0.2s;
     }
     .stButton>button:hover {
-        background-color: #b71c1c;
-        transform: scale(1.02);
+        background-color: #e0e4eb;
+        border-color: #b71c1c;
+        color: #b71c1c;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -132,14 +127,8 @@ match_data = [
 if nom:
     pronos = {}
     for match_name, emoji in match_data:
-        # Structure en un seul bloc sans bande blanche séparatrice
-        st.markdown(f'''
-            <div class="match-container">
-                <div class="match-header">{emoji} {match_name}</div>
-            </div>
-        ''', unsafe_allow_html=True)
+        st.markdown(f'<div class="match-header">{emoji} {match_name}</div>', unsafe_allow_html=True)
         
-        # Le widget radio est placé juste en dessous du titre
         pronos[match_name] = st.radio(
             f"Vainqueur {match_name}", 
             ["St-Nolff 🐺", "Adversaire"], 
@@ -147,8 +136,8 @@ if nom:
             horizontal=True, 
             label_visibility="collapsed"
         )
+        st.markdown('<div style="margin-bottom:15px;"></div>', unsafe_allow_html=True)
         
-    st.markdown("<br>", unsafe_allow_html=True)
     if st.button("🚀 VALIDER MA GRILLE"):
         df_v = load_data(VOTES_FILE)
         if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
@@ -222,6 +211,16 @@ with st.expander("🛠️ Administration"):
                     save_data(df_gen, SCORES_FILE)
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
                     st.rerun()
+        
+        with t2:
+            st.write("### Liste des votants du jour")
+            df_v = load_data(VOTES_FILE)
+            if not df_v.empty:
+                # On affiche juste la colonne "Joueur"
+                st.dataframe(df_v[["Joueur"]].reset_index(drop=True), use_container_width=True)
+            else:
+                st.info("Aucun vote enregistré pour le moment.")
+
         with t3:
             msg = st.text_area("Annonce :", load_message())
             if st.button("Mettre à jour"):
