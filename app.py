@@ -37,7 +37,6 @@ st.markdown("""
     <style>
     .stApp { background-color: #ffffff; }
     
-    /* Header principal */
     .header-box { 
         background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
         color: white !important; 
@@ -50,9 +49,8 @@ st.markdown("""
     .header-box h1 { color: white !important; font-size: 1.8rem !important; font-weight: 800; margin-bottom: 8px; }
     .header-box p { color: #ffeb3b !important; font-size: 0.9rem !important; font-weight: 500; }
     
-    /* Message Admin */
     .admin-msg {
-        background-color: #f0f2f6; /* Gris pale Streamlit */
+        background-color: #f0f2f6; 
         color: #31333F;
         padding: 15px;
         border-radius: 12px;
@@ -61,25 +59,17 @@ st.markdown("""
         margin: 15px 0;
     }
 
-    /* Bloc de match unifié */
-    .match-container {
-        border: 1px solid #f0f2f6;
-        border-radius: 12px;
-        margin-bottom: 5px;
-        overflow: hidden;
-    }
-
     .match-header { 
-        background-color: #f0f2f6; /* Gris pale identique au input */
+        background-color: #f0f2f6; 
         padding: 10px 15px; 
         font-weight: 700; 
         color: #000000;
         display: flex;
         align-items: center;
         gap: 10px;
+        border-radius: 8px;
     }
     
-    /* Boutons de validation en Gris Pale */
     .stButton>button {
         width: 100%;
         border-radius: 12px;
@@ -128,7 +118,6 @@ if nom:
     pronos = {}
     for match_name, emoji in match_data:
         st.markdown(f'<div class="match-header">{emoji} {match_name}</div>', unsafe_allow_html=True)
-        
         pronos[match_name] = st.radio(
             f"Vainqueur {match_name}", 
             ["St-Nolff 🐺", "Adversaire"], 
@@ -140,8 +129,10 @@ if nom:
         
     if st.button("🚀 VALIDER MA GRILLE"):
         df_v = load_data(VOTES_FILE)
+        
+        # --- VERIFICATION ANTI-DOUBLON ---
         if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
-            st.error("Tu as déjà envoyé tes pronos !")
+            st.error(f"Désolé {nom}, tu as déjà validé tes pronos pour cette rencontre ! 🐺")
         else:
             nouveau_vote = {"Joueur": nom}
             cleaned_pronos = {k: ("St-Nolff" if v == "St-Nolff 🐺" else v) for k, v in pronos.items()}
@@ -149,7 +140,7 @@ if nom:
             
             df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
             save_data(df_v, VOTES_FILE)
-            st.success("Grille validée ! Aouuuuuuh 🐺")
+            st.success("Grille validée ! Bonne chance la meute 🐺")
             st.balloons()
 
 st.divider()
@@ -175,7 +166,7 @@ if not df_scores.empty:
     df_scores["Évo"] = df_scores.apply(get_evolution_label, axis=1)
     st.table(df_scores[["Rang", "Évo", "Joueur", "Points"]].set_index("Rang"))
 else:
-    st.info("Le classement sera mis à jour après les premiers matchs.")
+    st.info("Le classement sera mis à jour après la validation des résultats.")
 
 # --- PHOTO SUPPORTERS ---
 try:
@@ -209,6 +200,7 @@ with st.expander("🛠️ Administration"):
                         else:
                             df_gen = pd.concat([df_gen, pd.DataFrame([{"Joueur": j, "Points": pts, "AncienRang": 0}])], ignore_index=True)
                     save_data(df_gen, SCORES_FILE)
+                    # On vide les votes pour la rencontre suivante
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
                     st.rerun()
         
@@ -216,10 +208,9 @@ with st.expander("🛠️ Administration"):
             st.write("### Liste des votants du jour")
             df_v = load_data(VOTES_FILE)
             if not df_v.empty:
-                # On affiche juste la colonne "Joueur"
                 st.dataframe(df_v[["Joueur"]].reset_index(drop=True), use_container_width=True)
             else:
-                st.info("Aucun vote enregistré pour le moment.")
+                st.info("Aucun vote enregistré.")
 
         with t3:
             msg = st.text_area("Annonce :", load_message())
