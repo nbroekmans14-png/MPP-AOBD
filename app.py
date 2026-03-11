@@ -32,14 +32,22 @@ def load_message():
             return f.read()
     return "Préparez vos pronos pour la prochaine rencontre !"
 
-# 2. DESIGN PERSONNALISÉ (GRIS PALE & ROUGE)
+# 2. DESIGN ANTI-MODE SOMBRE (FORÇAGE DES COULEURS)
 st.markdown("""
     <style>
-    .stApp { background-color: #ffffff; }
-    
+    /* Forcer le fond blanc et le texte noir pour tout l'appli (évite les bugs mode sombre iPhone) */
+    .stApp {
+        background-color: white !important;
+        color: #31333F !important;
+    }
+
+    /* Forcer la visibilité des textes dans les boutons radio et inputs */
+    label, p, span, div {
+        color: #31333F !important;
+    }
+
     .header-box { 
         background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
-        color: white !important; 
         padding: 25px; 
         border-radius: 0px 0px 20px 20px; 
         text-align: center; 
@@ -50,20 +58,20 @@ st.markdown("""
     .header-box p { color: #ffeb3b !important; font-size: 0.9rem !important; font-weight: 500; }
     
     .admin-msg {
-        background-color: #f0f2f6; 
-        color: #31333F;
+        background-color: #f0f2f6 !important; 
         padding: 15px;
         border-radius: 12px;
         text-align: center;
         font-weight: 600;
         margin: 15px 0;
+        color: #31333F !important;
     }
 
     .match-header { 
-        background-color: #f0f2f6; 
+        background-color: #f0f2f6 !important; 
         padding: 10px 15px; 
         font-weight: 700; 
-        color: #000000;
+        color: #000000 !important;
         display: flex;
         align-items: center;
         gap: 10px;
@@ -74,16 +82,16 @@ st.markdown("""
         width: 100%;
         border-radius: 12px;
         height: 3.5em;
-        background-color: #f0f2f6;
-        color: #31333F;
+        background-color: #f0f2f6 !important;
+        color: #31333F !important;
         font-weight: bold;
-        border: 1px solid #d1d5db;
-        transition: 0.2s;
+        border: 1px solid #d1d5db !important;
     }
-    .stButton>button:hover {
-        background-color: #e0e4eb;
-        border-color: #b71c1c;
-        color: #b71c1c;
+    
+    /* Forcer le texte noir dans le tableau de classement */
+    .stTable td, .stTable th {
+        color: black !important;
+        background-color: white !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -130,9 +138,8 @@ if nom:
     if st.button("🚀 VALIDER MA GRILLE"):
         df_v = load_data(VOTES_FILE)
         
-        # --- VERIFICATION ANTI-DOUBLON ---
         if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
-            st.error(f"Désolé {nom}, tu as déjà validé tes pronos pour cette rencontre ! 🐺")
+            st.error(f"Désolé {nom}, tu as déjà validé tes pronos ! 🐺")
         else:
             nouveau_vote = {"Joueur": nom}
             cleaned_pronos = {k: ("St-Nolff" if v == "St-Nolff 🐺" else v) for k, v in pronos.items()}
@@ -200,7 +207,6 @@ with st.expander("🛠️ Administration"):
                         else:
                             df_gen = pd.concat([df_gen, pd.DataFrame([{"Joueur": j, "Points": pts, "AncienRang": 0}])], ignore_index=True)
                     save_data(df_gen, SCORES_FILE)
-                    # On vide les votes pour la rencontre suivante
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
                     st.rerun()
         
