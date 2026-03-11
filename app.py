@@ -3,14 +3,14 @@ import pandas as pd
 import os
 
 # 1. CONFIGURATION
-st.set_page_config(page_title="Le MPP de l'AOBD", page_icon="🏸", layout="centered")
+st.set_page_config(page_title="MPP AOBD", page_icon="🏸", layout="centered")
 
 # Fichiers de sauvegarde
 VOTES_FILE = "tous_les_votes.csv"
 SCORES_FILE = "classement_general.csv"
 MSG_FILE = "message_admin.txt"
 
-# Fonctions de sauvegarde et chargement
+# Fonctions de gestion
 def save_data(df, filename):
     df.to_csv(filename, index=False)
 
@@ -30,80 +30,125 @@ def load_message():
     if os.path.exists(MSG_FILE):
         with open(MSG_FILE, "r", encoding="utf-8") as f:
             return f.read()
-    return "Prochaine rencontre à venir..."
+    return "Préparez vos pronos pour la prochaine rencontre !"
 
-# 2. STYLE CSS
+# 2. DESIGN PERSONNALISÉ (CSS)
 st.markdown("""
     <style>
-    .stApp { background-color: #ffffff; }
+    /* Fond général */
+    .stApp { background-color: #f8f9fa; }
+    
+    /* Header principal */
     .header-box { 
-        background-color: #004a99; 
+        background: linear-gradient(135deg, #004a99 0%, #003366 100%);
         color: white !important; 
-        padding: 15px; 
-        border-radius: 12px; 
+        padding: 25px; 
+        border-radius: 0px 0px 20px 20px; 
         text-align: center; 
-        border-bottom: 4px solid #ffcc00; 
-        margin-bottom: 10px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        margin: -60px -20px 20px -20px;
     }
-    .header-box h1 { color: white !important; font-size: 1.6rem !important; margin: 0; }
-    .header-box p { color: white !important; font-size: 0.8rem !important; }
+    .header-box h1 { color: white !important; font-size: 2rem !important; font-weight: 800; margin-bottom: 8px; }
+    .header-box p { color: #ffcc00 !important; font-size: 0.9rem !important; font-weight: 500; }
+    
+    /* Message Admin (Annonce) */
     .admin-msg {
-        background-color: #fff3cd;
-        color: #856404;
-        padding: 12px;
-        border-radius: 8px;
-        border: 1px solid #ffeeba;
+        background-color: #ffffff;
+        color: #004a99;
+        padding: 15px;
+        border-radius: 12px;
+        border-left: 6px solid #ffcc00;
         text-align: center;
-        font-weight: bold;
-        margin: 10px 0;
+        font-weight: 600;
+        margin: 15px 0;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
-    .match-card { background: #f1f3f5; padding: 10px; border-radius: 8px; border-left: 5px solid #004a99; margin-top: 10px; font-weight: bold; color: #004a99 !important; }
+
+    /* Cartes de matchs */
+    .match-card { 
+        background: white; 
+        padding: 12px; 
+        border-radius: 10px; 
+        border: 1px solid #e0e0e0;
+        margin-top: 15px; 
+        font-weight: 700; 
+        color: #333 !important;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    }
+    
+    /* Boutons */
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        height: 3em;
+        background-color: #004a99;
+        color: white;
+        font-weight: bold;
+        border: none;
+        transition: 0.3s;
+    }
+    .stButton>button:hover {
+        background-color: #ffcc00;
+        color: #004a99;
+    }
+
+    /* Images */
+    .stImage > img {
+        border-radius: 15px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# TITRE
+# --- HEADER ---
 st.markdown("""
     <div class="header-box">
-        <h1>🏸 Pronos AOBD</h1>
-        <p>1pt par bon prono + 3pts bonus si 8/8</p>
+        <h1>Le MPP de l'AOBD</h1>
+        <p>1pt par bon prono • +3pts bonus si 8/8</p>
     </div>
     """, unsafe_allow_html=True)
 
-# --- IMAGE 1 : L'ÉQUIPE (Noms de fichiers mis à jour) ---
+# --- PHOTO EQUIPE ---
 try:
-    st.image("image_c4425f.jpg.jpeg", use_container_width=True, caption="L'équipe AOBD Saint-Nolff")
-except Exception:
-    st.info("📸 Photo d'équipe (Vérifie le nom du fichier sur GitHub)")
+    st.image("image_c4425f.jpg.jpeg", use_container_width=True)
+except:
+    pass
 
-# MESSAGE DE L'ADMIN
+# --- MESSAGE ANNONCE ---
 st.markdown(f'<div class="admin-msg">📢 {load_message()}</div>', unsafe_allow_html=True)
 
-# 3. INTERFACE JOUEUR
-st.subheader("1️⃣ Ton Prono")
-nom = st.text_input("Prénom & Nom :", placeholder="Ex: Lucas B").strip()
+# 3. ESPACE VOTE
+with st.container():
+    st.subheader("🎯 Fais tes pronos")
+    nom = st.text_input("Ton Prénom & Nom", placeholder="Ex: Lucas B").strip()
 
-matchs = ["Simple Homme 1", "Simple Homme 2", "Simple Dame 1", "Simple Dame 2", 
-          "Double Homme", "Double Dame", "Mixte 1", "Mixte 2"]
+    matchs = ["Simple Homme 1", "Simple Homme 2", "Simple Dame 1", "Simple Dame 2", 
+              "Double Homme", "Double Dame", "Mixte 1", "Mixte 2"]
 
-if nom:
-    pronos = {}
-    for m in matchs:
-        st.markdown(f'<div class="match-card">{m}</div>', unsafe_allow_html=True)
-        pronos[m] = st.radio(f"Vainqueur {m}", ["St-Nolff", "Adversaire"], key=f"p_{m}", horizontal=True, label_visibility="collapsed")
-    
-    if st.button("🚀 VALIDER MES PRONOS"):
-        df_v = load_data(VOTES_FILE)
-        nouveau_vote = {"Joueur": nom}
-        nouveau_vote.update(pronos)
-        df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
-        save_data(df_v, VOTES_FILE)
-        st.success("Pronos enregistrés !")
-        st.balloons()
+    if nom:
+        pronos = {}
+        for m in matchs:
+            st.markdown(f'<div class="match-card">🏸 {m}</div>', unsafe_allow_html=True)
+            pronos[m] = st.radio(f"Vainqueur {m}", ["St-Nolff", "Adversaire"], key=f"p_{m}", horizontal=True, label_visibility="collapsed")
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🚀 VALIDER MES PRONOS"):
+            df_v = load_data(VOTES_FILE)
+            # Vérification si le nom a déjà voté cette session
+            if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
+                st.error("Tu as déjà voté pour cette rencontre !")
+            else:
+                nouveau_vote = {"Joueur": nom}
+                nouveau_vote.update(pronos)
+                df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
+                save_data(df_v, VOTES_FILE)
+                st.success("Pronos enregistrés ! Bonne chance.")
+                st.balloons()
 
 st.divider()
 
-# 4. CLASSEMENT GÉNÉRAL
-st.subheader("🏆 Classement")
+# 4. CLASSEMENT
+st.subheader("🏆 Classement Général")
 df_scores = load_data(SCORES_FILE)
 
 if not df_scores.empty:
@@ -117,29 +162,31 @@ if not df_scores.empty:
         diff = int(row["AncienRang"]) - int(row["Rang"])
         if diff > 0: return f"🟢 +{diff}"
         elif diff < 0: return f"🔴 {diff}"
-        else: return "〓"
+        return "〓"
 
-    df_scores["Évolution"] = df_scores.apply(get_evolution_label, axis=1)
-    st.table(df_scores[["Rang", "Évolution", "Joueur", "Points"]].set_index("Rang"))
+    df_scores["Évo"] = df_scores.apply(get_evolution_label, axis=1)
+    
+    # Affichage simplifié pour mobile
+    st.table(df_scores[["Rang", "Évo", "Joueur", "Points"]].set_index("Rang"))
 else:
-    st.info("Le classement arrivera bientôt !")
+    st.info("Le classement sera affiché après la première journée.")
 
-# --- IMAGE 2 : LES SUPPORTERS ---
+# --- PHOTO SUPPORTERS ---
 try:
-    st.image("image_c4423b.jpg.jpeg", use_container_width=True, caption="La Meute fait la loi ! 🐺")
-except Exception:
+    st.image("image_c4423b.jpg.jpeg", use_container_width=True)
+except:
     pass
 
-# 5. ESPACE ADMIN
-st.divider()
-with st.expander("🛠️ Admin"):
-    mdp = st.text_input("Code :", type="password")
+# 5. ADMIN
+st.markdown("<br><br>", unsafe_allow_html=True)
+with st.expander("🛠️ Espace Administrateur"):
+    mdp = st.text_input("Code secret", type="password")
     if mdp == "2003":
-        tab1, tab2, tab3, tab4 = st.tabs(["✅ Résultats", "👥 Votes", "📢 Message", "⚠️ Reset"])
+        t1, t2, t3, t4 = st.tabs(["Résultats", "Votes", "Message", "Reset"])
         
-        with tab1:
-            reels = {m: st.selectbox(f"Gagnant {m}", ["St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
-            if st.button("CALCULER LES POINTS"):
+        with t1:
+            reels = {m: st.selectbox(f"{m}", ["St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
+            if st.button("Calculer la journée"):
                 df_v = load_data(VOTES_FILE)
                 if not df_v.empty:
                     df_gen = load_data(SCORES_FILE)
@@ -150,32 +197,27 @@ with st.expander("🛠️ Admin"):
                         df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
 
                     for _, row in df_v.iterrows():
-                        joueur, bons = row['Joueur'], sum(1 for m in matchs if row[m] == reels[m])
-                        pts = bons + (3 if bons == 8 else 0)
-                        if joueur in df_gen['Joueur'].values:
-                            df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts
+                        j, b = row['Joueur'], sum(1 for m in matchs if row[m] == reels[m])
+                        pts = b + (3 if b == 8 else 0)
+                        if j in df_gen['Joueur'].values:
+                            df_gen.loc[df_gen['Joueur'] == j, 'Points'] += pts
                         else:
-                            df_gen = pd.concat([df_gen, pd.DataFrame([{"Joueur": joueur, "Points": pts, "AncienRang": 0}])], ignore_index=True)
+                            df_gen = pd.concat([df_gen, pd.DataFrame([{"Joueur": j, "Points": pts, "AncienRang": 0}])], ignore_index=True)
                     save_data(df_gen, SCORES_FILE)
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
                     st.rerun()
 
-        with tab2:
+        with t2:
             df_v = load_data(VOTES_FILE)
-            if not df_v.empty:
-                st.write(f"Nombre de votes : {len(df_v)}")
-                st.dataframe(df_v[["Joueur"]], use_container_width=True)
-            else:
-                st.info("Aucun vote en cours.")
+            st.write(df_v[["Joueur"]] if not df_v.empty else "Aucun vote")
 
-        with tab3:
-            new_msg = st.text_area("Texte de l'annonce :", load_message())
-            if st.button("Mettre à jour"):
-                save_message(new_msg)
+        with t3:
+            msg = st.text_area("Annonce :", load_message())
+            if st.button("Enregistrer"):
+                save_message(msg)
                 st.rerun()
 
-        with tab4:
-            if st.button("🗑️ RESET TOTAL"):
-                for f in [SCORES_FILE, VOTES_FILE]:
-                    if os.path.exists(f): os.remove(f)
+        with t4:
+            if st.button("⚠️ RESET TOTAL"):
+                if os.path.exists(SCORES_FILE): os.remove(SCORES_FILE)
                 st.rerun()
