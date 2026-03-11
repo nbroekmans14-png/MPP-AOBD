@@ -16,8 +16,10 @@ def save_data(df, filename):
 
 def load_data(filename):
     if os.path.exists(filename):
-        try: return pd.read_csv(filename)
-        except: return pd.DataFrame()
+        try:
+            return pd.read_csv(filename)
+        except:
+            return pd.DataFrame()
     return pd.DataFrame()
 
 def save_info(text):
@@ -49,7 +51,7 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# Affichage du message de l'Admin (Date, Lieu, etc.)
+# Affichage du message de l'Admin
 st.markdown(f'<div class="info-box">📢 {load_info()}</div>', unsafe_allow_html=True)
 
 # 3. INTERFACE JOUEUR (VOTE)
@@ -83,16 +85,14 @@ if nom:
 
 st.divider()
 
-# 4. CLASSEMENT GÉNÉRAL AVEC ÉVOLUTION (+/-)
+# 4. CLASSEMENT GÉNÉRAL AVEC ÉVOLUTION
 st.subheader("🏆 CLASSEMENT GÉNÉRAL")
 df_scores = load_data(SCORES_FILE)
 
 if not df_scores.empty:
-    # On trie pour avoir le rang actuel
     df_scores = df_scores.sort_values(by="Points", ascending=False).reset_index(drop=True)
     df_scores['Rang'] = range(1, len(df_scores) + 1)
 
-    # Calcul de la tendance (+1, -2, etc.)
     def format_tendance(row):
         if 'AncienRang' not in row or pd.isna(row['AncienRang']) or row['AncienRang'] == 999:
             return "⚪ ="
@@ -102,8 +102,6 @@ if not df_scores.empty:
         return "⚪ ="
 
     df_scores['Evolution'] = df_scores.apply(format_tendance, axis=1)
-    
-    # Affichage
     df_display = df_scores[['Rang', 'Evolution', 'Joueur', 'Points']]
     st.table(df_display)
 else:
@@ -112,55 +110,4 @@ else:
 # 5. ESPACE ADMIN
 st.divider()
 with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
-    mdp = st.text_input("Code secret :", type="password")
-    
-    if mdp == "2003":
-        tab1, tab2, tab3, tab4 = st.tabs(["📢 Annonce", "✅ Résultats", "👥 Votes", "⚠️ Danger"])
-
-        with tab1:
-            st.write("### Modifier l'annonce")
-            nouvelle_info = st.text_area("Ex: Match contre Vannes à domicile - Jeudi 20h", value=load_info())
-            if st.button("Mettre à jour l'annonce"):
-                save_info(nouvelle_info)
-                st.success("Annonce mise à jour !")
-                st.rerun()
-
-        with tab2:
-            st.write("### Valider la rencontre")
-            reels = {m: st.selectbox(f"Gagnant {m}", ["-", "St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
-            
-            if st.button("✅ CALCULER LES POINTS"):
-                df_v = load_data(VOTES_FILE)
-                if df_v.empty: st.error("Aucun vote !")
-                elif any(v == "-" for v in reels.values()): st.error("Remplis tout !")
-                else:
-                    df_gen = load_data(SCORES_FILE)
-                    
-                    # 1. Avant de changer les points, on mémorise le rang actuel comme "AncienRang"
-                    if not df_gen.empty:
-                        df_gen = df_gen.sort_values(by="Points", ascending=False).reset_index(drop=True)
-                        df_gen['AncienRang'] = range(1, len(df_gen) + 1)
-                    else:
-                        df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
-
-                    # 2. On ajoute les nouveaux points
-                    for index, row in df_v.iterrows():
-                        joueur = row['Joueur']
-                        bons = sum(1 for m in matchs if row[m] == reels[m])
-                        pts_j = bons + (3 if bons == 8 else 0)
-                        
-                        if joueur in df_gen['Joueur'].values:
-                            df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts_j
-                        else:
-                            # Nouveau joueur (AncienRang 999 pour dire qu'il n'existait pas)
-                            new_p = pd.DataFrame([{"Joueur": joueur, "Points": pts_j, "AncienRang": 999}])
-                            df_gen = pd.concat([df_gen, new_p], ignore_index=True)
-                    
-                    save_data(df_gen, SCORES_FILE)
-                    if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
-                    st.success("Points et évolution mis à jour !")
-                    st.rerun()
-
-        with tab3:
-            df_v = load_data(VOTES_FILE)
-            if not df_v.empty:
+    mdp = st.text_input("Code secret :", type="
