@@ -32,57 +32,59 @@ def load_message():
             return f.read()
     return "Préparez vos pronos pour la prochaine rencontre !"
 
-# 2. DESIGN FORCE (ANTI-MODE SOMBRE)
+# 2. DESIGN FORCE (ANTI-MODE SOMBRE & POLICE AGRANDIE)
 st.markdown("""
     <style>
-    /* On force les couleurs de base de Streamlit pour écraser le mode sombre */
     :root {
         --primary-color: #d32f2f;
         --background-color: #ffffff;
         --secondary-background-color: #f0f2f6;
         --text-color: #31333F;
-        --font: 'sans serif';
     }
 
-    /* Forçage du fond de l'application */
-    .stApp {
-        background-color: white !important;
-    }
+    .stApp { background-color: white !important; }
 
-    /* Forçage de la couleur de TOUS les textes en gris très foncé/noir */
     .stApp, .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stMarkdown {
         color: #31333F !important;
     }
 
-    /* Header Rouge (Lui reste en blanc sur rouge) */
+    /* Header */
     .header-box { 
         background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
         padding: 25px; 
         border-radius: 0px 0px 20px 20px; 
         text-align: center; 
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        margin: -60px -20px 20px -20px;
+        margin: -60px -20px 10px -20px;
     }
-    .header-box h1 { color: white !important; }
-    .header-box p { color: #ffeb3b !important; }
+    .header-box h1 { color: white !important; font-size: 1.8rem !important; margin-bottom: 8px; }
+    .header-box p { color: #ffeb3b !important; font-size: 0.95rem !important; font-weight: 500; }
     
-    /* Message Admin & Match Headers */
-    .admin-msg, .match-header {
+    /* Annonce Admin - Police plus grande */
+    .admin-msg {
         background-color: #f0f2f6 !important; 
         color: #31333F !important;
+        padding: 18px;
         border-radius: 12px;
-    }
-    
-    .match-header {
-        padding: 10px 15px; 
+        text-align: center;
         font-weight: 700;
+        font-size: 1.15rem !important; /* Police agrandie */
+        margin: 15px 0;
+        border: 1px solid #d1d5db;
+    }
+
+    .match-header { 
+        background-color: #f0f2f6 !important; 
+        padding: 10px 15px; 
+        font-weight: 700; 
+        color: #000000 !important;
         display: flex;
         align-items: center;
         gap: 10px;
+        border-radius: 8px;
         margin-top: 10px;
     }
-
-    /* Boutons de validation */
+    
     .stButton>button {
         background-color: #f0f2f6 !important;
         color: #31333F !important;
@@ -92,73 +94,51 @@ st.markdown("""
         font-weight: bold;
     }
 
-    /* Forcer le tableau en mode clair */
-    .stTable {
-        background-color: white !important;
-    }
-    .stTable td, .stTable th {
-        color: #31333F !important;
-        background-color: white !important;
-        border-bottom: 1px solid #f0f2f6 !important;
-    }
-
-    /* Masquer les bordures de focus rouges moches sur iPhone */
-    input:focus {
-        border-color: #d32f2f !important;
-        box-shadow: none !important;
-    }
+    .stTable { background-color: white !important; }
+    .stTable td, .stTable th { color: #31333F !important; background-color: white !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- HEADER ---
+# --- 1. TITRE ET RÈGLES ---
 st.markdown('<div class="header-box"><h1>Le MPP de l\'AOBD</h1><p>1pt par bon prono • +3pts bonus si 8/8</p></div>', unsafe_allow_html=True)
 
-# --- PHOTO EQUIPE ---
+# --- 2. ANNONCE (Nouvelle place : juste sous le titre) ---
+st.markdown(f'<div class="admin-msg">📢 {load_message()}</div>', unsafe_allow_html=True)
+
+# --- 3. PHOTO EQUIPE ---
 try:
     st.image("image_c4425f.jpg.jpeg", use_container_width=True)
 except:
     pass
 
-st.markdown(f'<div class="admin-msg">📢 {load_message()}</div>', unsafe_allow_html=True)
+st.divider()
 
-# 3. ESPACE VOTE
+# --- 4. ESPACE VOTE ---
 st.subheader("🎯 Fais tes pronos")
 nom = st.text_input("Ton Prénom & Nom", placeholder="Ex: Lucas B").strip()
 
 match_data = [
-    ("Simple Homme 1", "👨"),
-    ("Simple Homme 2", "👨"),
-    ("Simple Dame 1", "👩"),
-    ("Simple Dame 2", "👩"),
-    ("Double Homme", "👬"),
-    ("Double Dame", "👭"),
-    ("Mixte 1", "👫"),
-    ("Mixte 2", "👫")
+    ("Simple Homme 1", "👨"), ("Simple Homme 2", "👨"),
+    ("Simple Dame 1", "👩"), ("Simple Dame 2", "👩"),
+    ("Double Homme", "👬"), ("Double Dame", "👭"),
+    ("Mixte 1", "👫"), ("Mixte 2", "👫")
 ]
 
 if nom:
     pronos = {}
     for match_name, emoji in match_data:
         st.markdown(f'<div class="match-header">{emoji} {match_name}</div>', unsafe_allow_html=True)
-        pronos[match_name] = st.radio(
-            f"Vainqueur {match_name}", 
-            ["St-Nolff 🐺", "Adversaire"], 
-            key=f"p_{match_name}", 
-            horizontal=True, 
-            label_visibility="collapsed"
-        )
+        pronos[match_name] = st.radio(f"Vainqueur {match_name}", ["St-Nolff 🐺", "Adversaire"], key=f"p_{match_name}", horizontal=True, label_visibility="collapsed")
         st.markdown('<div style="margin-bottom:10px;"></div>', unsafe_allow_html=True)
         
     if st.button("🚀 VALIDER MA GRILLE"):
         df_v = load_data(VOTES_FILE)
-        
         if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
-            st.error(f"Oups {nom}, tu as déjà voté ! 🐺")
+            st.error(f"Désolé {nom}, tu as déjà voté ! 🐺")
         else:
             nouveau_vote = {"Joueur": nom}
             cleaned_pronos = {k: ("St-Nolff" if v == "St-Nolff 🐺" else v) for k, v in pronos.items()}
             nouveau_vote.update(cleaned_pronos)
-            
             df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
             save_data(df_v, VOTES_FILE)
             st.success("Grille validée ! Aouuuuuuh 🐺")
@@ -166,36 +146,29 @@ if nom:
 
 st.divider()
 
-# 4. CLASSEMENT
+# --- 5. CLASSEMENT ---
 st.subheader("🏆 Classement Général")
 df_scores = load_data(SCORES_FILE)
-
 if not df_scores.empty:
     df_scores = df_scores.sort_values(by="Points", ascending=False).reset_index(drop=True)
     df_scores["Rang"] = df_scores.index + 1
-    
-    if "AncienRang" not in df_scores.columns:
-        df_scores["AncienRang"] = 0
-        
+    if "AncienRang" not in df_scores.columns: df_scores["AncienRang"] = 0
     def get_evolution_label(row):
         if row["AncienRang"] == 0: return "🆕"
         diff = int(row["AncienRang"]) - int(row["Rang"])
-        if diff > 0: return f"🟢 +{diff}"
-        elif diff < 0: return f"🔴 {diff}"
-        return "〓"
-
+        return f"🟢 +{diff}" if diff > 0 else (f"🔴 {diff}" if diff < 0 else "〓")
     df_scores["Évo"] = df_scores.apply(get_evolution_label, axis=1)
     st.table(df_scores[["Rang", "Évo", "Joueur", "Points"]].set_index("Rang"))
 else:
-    st.info("Le classement arrive après le premier match.")
+    st.info("Le classement arrive prochainement.")
 
-# --- PHOTO SUPPORTERS ---
+# --- 6. PHOTO SUPPORTERS ---
 try:
     st.image("image_c4423b.jpg.jpeg", use_container_width=True)
 except:
     pass
 
-# 5. ADMIN
+# --- 7. ADMIN ---
 st.markdown("<br><br>", unsafe_allow_html=True)
 with st.expander("🛠️ Administration"):
     mdp = st.text_input("Code", type="password")
@@ -203,7 +176,7 @@ with st.expander("🛠️ Administration"):
         t1, t2, t3, t4 = st.tabs(["Résultats", "Votes", "Message", "Reset"])
         with t1:
             reels = {m[0]: st.selectbox(f"{m[0]}", ["St-Nolff", "Adversaire"], key=f"adm_{m[0]}") for m in match_data}
-            if st.button("Calculer la journée"):
+            if st.button("Valider la journée"):
                 df_v = load_data(VOTES_FILE)
                 if not df_v.empty:
                     df_gen = load_data(SCORES_FILE)
@@ -212,7 +185,6 @@ with st.expander("🛠️ Administration"):
                         df_gen["AncienRang"] = df_gen.index + 1
                     else:
                         df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
-
                     for _, row in df_v.iterrows():
                         j, b = row['Joueur'], sum(1 for m, _ in match_data if row[m] == reels[m])
                         pts = b + (3 if b == 8 else 0)
@@ -223,20 +195,15 @@ with st.expander("🛠️ Administration"):
                     save_data(df_gen, SCORES_FILE)
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
                     st.rerun()
-        
         with t2:
-            st.write("### Liste des votants")
+            st.write("### Votants")
             df_v = load_data(VOTES_FILE)
-            if not df_v.empty:
-                st.dataframe(df_v[["Joueur"]].reset_index(drop=True), use_container_width=True)
-            else:
-                st.info("Aucun vote.")
-
+            if not df_v.empty: st.dataframe(df_v[["Joueur"]], use_container_width=True)
         with t3:
             msg = st.text_area("Annonce :", load_message())
-            if st.button("Valider l'annonce"):
+            if st.button("Modifier l'annonce"):
                 save_message(msg); st.rerun()
         with t4:
-            if st.button("RESET TOUT"):
+            if st.button("RESET"):
                 if os.path.exists(SCORES_FILE): os.remove(SCORES_FILE)
                 st.rerun()
