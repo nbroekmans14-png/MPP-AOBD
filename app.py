@@ -69,8 +69,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 # AFFICHAGE DU MESSAGE ADMIN
-msg_admin = load_message()
-st.markdown(f'<div class="admin-msg">📢 {msg_admin}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="admin-msg">📢 {load_message()}</div>', unsafe_allow_html=True)
 
 # 3. INTERFACE JOUEUR (VOTE)
 st.subheader("1️⃣ Fais ton prono !")
@@ -104,12 +103,11 @@ if not df_scores.empty:
     if "AncienRang" not in df_scores.columns:
         df_scores["AncienRang"] = 0
     
-    # On trie par points
+    # Tri et définition du rang actuel
     df_scores = df_scores.sort_values(by="Points", ascending=False).reset_index(drop=True)
-    # On définit le rang (1, 2, 3...)
     df_scores["Rang"] = df_scores.index + 1
     
-    # Fonction pour calculer l'évolution (+2, -1, etc.)
+    # Calcul de l'évolution (+2, -1, etc.)
     def get_evolution_label(row):
         if row["AncienRang"] == 0: 
             return "🆕"
@@ -123,11 +121,8 @@ if not df_scores.empty:
 
     df_scores["Évolution"] = df_scores.apply(get_evolution_label, axis=1)
     
-    # --- SUPPRESSION DE LA COLONNE D'INDEX ET PRÉPARATION DE L'AFFICHAGE ---
-    # On sélectionne les colonnes dans l'ordre voulu
+    # Affichage sans la colonne d'index par défaut
     classement_final = df_scores[["Rang", "Évolution", "Joueur", "Points"]]
-    
-    # On affiche le tableau sans la colonne d'index de gauche
     st.table(classement_final.set_index("Rang"))
 else:
     st.info("Le classement sera mis à jour après la validation des matchs par l'admin.")
@@ -142,4 +137,59 @@ with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
 
         with tab1:
             st.write("### Entrer les résultats réels")
-            reels = {m: st.selectbox(f"Gagnant {m}", ["St-Nolff", "Adversaire"],
+            reels = {m: st.selectbox(f"Gagnant {m}", ["St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
+            
+            if st.button("✅ CALCULER ET CLOTURER LA JOURNÉE"):
+                df_v = load_data(VOTES_FILE)
+                if df_v.empty:
+                    st.error("Personne n'a encore voté !")
+                else:
+                    df_gen = load_data(SCORES_FILE)
+                    if df_gen.empty:
+                        df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
+                    else:
+                        # On mémorise le rang actuel comme AncienRang avant de mettre à jour les points
+                        df_gen = df_gen.sort_values(by="Points", ascending=False).reset_index(drop=True)
+                        df_gen["AncienRang"] = df_gen.index + 1
+
+                    for index, row in df_v.iterrows():
+                        joueur = row['Joueur']
+                        bons = sum(1 for m in matchs if row[m] == reels[m])
+                        pts_journee = bons + (3 if bons == 8 else 0)
+                        
+                        if joueur in df_gen['Joueur'].values:
+                            df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts_journee
+                        else:
+                            new_row = pd.DataFrame([{"Joueur": joueur, "Points": pts_journee, "AncienRang": 0}])
+                            df_gen = pd.concat([df_gen, new_row], ignore_index=True)
+                    
+                    save_data(df_gen, SCORES_FILE)
+                    if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
+                    st.success("Classement mis à jour !")
+                    st.rerun()
+
+        with tab2:
+            st.write("### Liste des joueurs ayant voté")
+            df_v = load_data(VOTES_FILE)
+            if not df_v.empty:
+                st.dataframe(df_v[["Joueur"]], use_container_width=True)
+            else:
+                st.info("Aucun vote pour le moment.")
+
+        with tab3:
+            st.write("### Modifier l'annonce de la rencontre")
+            new_msg = st.text_area("Texte de l'annonce", load_message())
+            if st.button("Enregistrer le message"):
+                save_message(new_msg)
+                st.success("Message mis à jour !")
+                st.rerun()
+
+        with tab4:
+            st.write("### Réinitialisation complète")
+            if st.button("🗑️ Effacer TOUT"):
+                for f in [SCORES_FILE, VOTES_FILE, MSG_FILE]:
+                    if os.path.exists(f): os.remove(f)
+                st.rerun()
+            
+    elif mdp != "":
+        st.error("Mot de passe incorrect.")
