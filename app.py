@@ -8,34 +8,36 @@ st.set_page_config(page_title="Pronos St-Nolff", page_icon="🏸", layout="cente
 # Fichiers de sauvegarde
 VOTES_FILE = "tous_les_votes.csv"
 SCORES_FILE = "classement_general.csv"
+INFO_FILE = "info_rencontre.txt"
 
-# Fonctions de sauvegarde
+# Fonctions de gestion des données
 def save_data(df, filename):
     df.to_csv(filename, index=False)
 
 def load_data(filename):
     if os.path.exists(filename):
-        try:
-            return pd.read_csv(filename)
-        except:
-            return pd.DataFrame()
+        try: return pd.read_csv(filename)
+        except: return pd.DataFrame()
     return pd.DataFrame()
+
+def save_info(text):
+    with open(INFO_FILE, "w", encoding="utf-8") as f:
+        f.write(text)
+
+def load_info():
+    if os.path.exists(INFO_FILE):
+        with open(INFO_FILE, "r", encoding="utf-8") as f:
+            return f.read()
+    return "Prochaine rencontre à venir..."
 
 # 2. STYLE CSS
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; }
-    .header-box { 
-        background-color: #004a99; 
-        color: white !important; 
-        padding: 20px; 
-        border-radius: 12px; 
-        text-align: center; 
-        border-bottom: 4px solid #ffcc00; 
-    }
-    .header-box h1 { color: white !important; margin-bottom: 5px; font-size: 1.8rem !important; }
-    .header-box p { color: white !important; font-size: 0.9rem !important; margin: 0; }
+    .header-box { background-color: #004a99; color: white !important; padding: 20px; border-radius: 12px; text-align: center; border-bottom: 4px solid #ffcc00; }
+    .info-box { background-color: #fff9c4; color: #333 !important; padding: 15px; border-radius: 8px; text-align: center; margin-top: 15px; border: 1px solid #fbc02d; font-weight: bold; font-size: 1.1rem; }
     .match-card { background: #f1f3f5; padding: 10px; border-radius: 8px; border-left: 5px solid #004a99; margin-top: 10px; font-weight: bold; color: #004a99 !important; }
+    .stRadio [data-testid="stMarkdownContainer"] p { color: #1a1a1a !important; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -43,10 +45,12 @@ st.markdown("""
 st.markdown("""
     <div class="header-box">
         <h1>🏸 Le MPP de l'AOBD</h1>
-        <p>Pronostique les 8 matchs : 1pt par bonne réponse + 3pts bonus si 8/8.<br>
-        Joue à chaque journée pour faire grimper ton classement !</p>
+        <p>1pt par bonne réponse + 3pts bonus si 8/8.</p>
     </div>
     """, unsafe_allow_html=True)
+
+# Affichage du message de l'Admin (Date, Lieu, etc.)
+st.markdown(f'<div class="info-box">📢 {load_info()}</div>', unsafe_allow_html=True)
 
 # 3. INTERFACE JOUEUR (VOTE)
 st.subheader("1️⃣ Fais ton prono !")
@@ -56,85 +60,107 @@ matchs = ["Simple Homme 1", "Simple Homme 2", "Simple Dame 1", "Simple Dame 2",
           "Double Homme", "Double Dame", "Mixte 1", "Mixte 2"]
 
 if nom:
-    pronos = {}
-    for m in matchs:
-        st.markdown(f'<div class="match-card">{m}</div>', unsafe_allow_html=True)
-        pronos[m] = st.radio(f"Vainqueur {m}", ["St-Nolff", "Adversaire"], key=f"p_{m}", horizontal=True, label_visibility="collapsed")
-    
-    if st.button("🚀 ENREGISTRER MON VOTE"):
-        df_v = load_data(VOTES_FILE)
-        nouveau_vote = {"Joueur": nom}
-        nouveau_vote.update(pronos)
-        df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
-        save_data(df_v, VOTES_FILE)
-        st.success("C'est enregistré ! Attends la validation pour voir tes points.")
-        st.balloons()
+    df_v_check = load_data(VOTES_FILE)
+    deja_vote = not df_v_check.empty and nom in df_v_check['Joueur'].values
+
+    if deja_vote:
+        st.warning(f"⚠️ {nom}, tu as déjà validé tes pronos pour cette rencontre !")
+    else:
+        pronos = {}
+        for m in matchs:
+            st.markdown(f'<div class="match-card">{m}</div>', unsafe_allow_html=True)
+            pronos[m] = st.radio(f"Vainqueur {m}", ["St-Nolff", "Adversaire"], key=f"p_{m}", horizontal=True, label_visibility="collapsed")
+        
+        if st.button("🚀 ENREGISTRER MON VOTE"):
+            df_v = load_data(VOTES_FILE)
+            nouveau_vote = {"Joueur": nom}
+            nouveau_vote.update(pronos)
+            df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
+            save_data(df_v, VOTES_FILE)
+            st.success("Enregistré ! Bonne chance.")
+            st.balloons()
+            st.rerun()
 
 st.divider()
 
-# 4. CLASSEMENT GÉNÉRAL (VISIBLE PAR TOUS)
+# 4. CLASSEMENT GÉNÉRAL AVEC ÉVOLUTION (+/-)
 st.subheader("🏆 CLASSEMENT GÉNÉRAL")
 df_scores = load_data(SCORES_FILE)
-if not df_scores.empty:
-    st.table(df_scores.sort_values(by="Points", ascending=False))
-else:
-    st.info("Le classement sera mis à jour après la validation des matchs par l'admin.")
 
-# 5. ESPACE ADMIN (ONGLETS SÉCURISÉS)
+if not df_scores.empty:
+    # On trie pour avoir le rang actuel
+    df_scores = df_scores.sort_values(by="Points", ascending=False).reset_index(drop=True)
+    df_scores['Rang'] = range(1, len(df_scores) + 1)
+
+    # Calcul de la tendance (+1, -2, etc.)
+    def format_tendance(row):
+        if 'AncienRang' not in row or pd.isna(row['AncienRang']) or row['AncienRang'] == 999:
+            return "⚪ ="
+        diff = int(row['AncienRang']) - int(row['Rang'])
+        if diff > 0: return f"🟢 +{diff}"
+        elif diff < 0: return f"🔴 {diff}"
+        return "⚪ ="
+
+    df_scores['Evolution'] = df_scores.apply(format_tendance, axis=1)
+    
+    # Affichage
+    df_display = df_scores[['Rang', 'Evolution', 'Joueur', 'Points']]
+    st.table(df_display)
+else:
+    st.info("Le classement s'affichera ici après la première rencontre.")
+
+# 5. ESPACE ADMIN
 st.divider()
 with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
     mdp = st.text_input("Code secret :", type="password")
     
     if mdp == "2003":
-        # Création des onglets
-        tab1, tab2, tab3 = st.tabs(["✅ Valider Résultats", "👥 Suivi des Votes", "⚠️ Danger"])
+        tab1, tab2, tab3, tab4 = st.tabs(["📢 Annonce", "✅ Résultats", "👥 Votes", "⚠️ Danger"])
 
         with tab1:
-            st.write("### Entrer les résultats réels")
-            reels = {m: st.selectbox(f"Gagnant {m}", ["St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
+            st.write("### Modifier l'annonce")
+            nouvelle_info = st.text_area("Ex: Match contre Vannes à domicile - Jeudi 20h", value=load_info())
+            if st.button("Mettre à jour l'annonce"):
+                save_info(nouvelle_info)
+                st.success("Annonce mise à jour !")
+                st.rerun()
+
+        with tab2:
+            st.write("### Valider la rencontre")
+            reels = {m: st.selectbox(f"Gagnant {m}", ["-", "St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
             
-            if st.button("✅ CALCULER ET CLOTURER LA JOURNÉE"):
+            if st.button("✅ CALCULER LES POINTS"):
                 df_v = load_data(VOTES_FILE)
-                if df_v.empty:
-                    st.error("Personne n'a encore voté !")
+                if df_v.empty: st.error("Aucun vote !")
+                elif any(v == "-" for v in reels.values()): st.error("Remplis tout !")
                 else:
                     df_gen = load_data(SCORES_FILE)
-                    if df_gen.empty:
-                        df_gen = pd.DataFrame(columns=["Joueur", "Points"])
+                    
+                    # 1. Avant de changer les points, on mémorise le rang actuel comme "AncienRang"
+                    if not df_gen.empty:
+                        df_gen = df_gen.sort_values(by="Points", ascending=False).reset_index(drop=True)
+                        df_gen['AncienRang'] = range(1, len(df_gen) + 1)
+                    else:
+                        df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
 
+                    # 2. On ajoute les nouveaux points
                     for index, row in df_v.iterrows():
                         joueur = row['Joueur']
                         bons = sum(1 for m in matchs if row[m] == reels[m])
-                        pts_journee = bons + (3 if bons == 8 else 0)
+                        pts_j = bons + (3 if bons == 8 else 0)
                         
                         if joueur in df_gen['Joueur'].values:
-                            df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts_journee
+                            df_gen.loc[df_gen['Joueur'] == joueur, 'Points'] += pts_j
                         else:
-                            new_row = pd.DataFrame([{"Joueur": joueur, "Points": pts_journee}])
-                            df_gen = pd.concat([df_gen, new_row], ignore_index=True)
+                            # Nouveau joueur (AncienRang 999 pour dire qu'il n'existait pas)
+                            new_p = pd.DataFrame([{"Joueur": joueur, "Points": pts_j, "AncienRang": 999}])
+                            df_gen = pd.concat([df_gen, new_p], ignore_index=True)
                     
                     save_data(df_gen, SCORES_FILE)
                     if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
-                    st.success("Points ajoutés au classement général !")
+                    st.success("Points et évolution mis à jour !")
                     st.rerun()
 
-        with tab2:
-            st.write("### Liste des joueurs ayant voté")
+        with tab3:
             df_v = load_data(VOTES_FILE)
             if not df_v.empty:
-                st.write(f"Nombre de votes enregistrés : **{len(df_v)}**")
-                st.dataframe(df_v[["Joueur"]], use_container_width=True)
-            else:
-                st.info("Aucun vote pour le moment.")
-
-        with tab3:
-            st.write("### Réinitialisation complète")
-            st.warning("Attention : cette action est irréversible.")
-            if st.button("🗑️ Effacer TOUT le classement"):
-                if os.path.exists(SCORES_FILE): os.remove(SCORES_FILE)
-                if os.path.exists(VOTES_FILE): os.remove(VOTES_FILE)
-                st.success("Tout a été remis à zéro.")
-                st.rerun()
-            
-    elif mdp != "":
-        st.error("Mot de passe incorrect.")
