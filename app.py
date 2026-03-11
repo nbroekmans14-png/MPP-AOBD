@@ -3,7 +3,7 @@ import pandas as pd
 import os
 
 # 1. CONFIGURATION
-st.set_page_config(page_title="Pronos St-Nolff", page_icon="🏸", layout="centered")
+st.set_page_config(page_title="Le MPP de l'AOBD", page_icon="🏸", layout="centered")
 
 # Fichiers de sauvegarde
 VOTES_FILE = "tous_les_votes.csv"
@@ -30,9 +30,9 @@ def load_message():
     if os.path.exists(MSG_FILE):
         with open(MSG_FILE, "r", encoding="utf-8") as f:
             return f.read()
-    return "Aucune info pour le moment."
+    return "Prochaine rencontre à venir..."
 
-# 2. STYLE CSS AMÉLIORÉ
+# 2. STYLE CSS
 st.markdown("""
     <style>
     .stApp { background-color: #ffffff; }
@@ -47,15 +47,6 @@ st.markdown("""
     }
     .header-box h1 { color: white !important; font-size: 1.6rem !important; margin: 0; }
     .header-box p { color: white !important; font-size: 0.8rem !important; }
-    
-    /* Style pour les images */
-    .img-container {
-        border-radius: 15px;
-        overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        margin: 10px 0;
-    }
-    
     .admin-msg {
         background-color: #fff3cd;
         color: #856404;
@@ -64,13 +55,13 @@ st.markdown("""
         border: 1px solid #ffeeba;
         text-align: center;
         font-weight: bold;
-        font-size: 0.9rem;
+        margin: 10px 0;
     }
     .match-card { background: #f1f3f5; padding: 10px; border-radius: 8px; border-left: 5px solid #004a99; margin-top: 10px; font-weight: bold; color: #004a99 !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# PRÉSENTATION & TITRE
+# TITRE
 st.markdown("""
     <div class="header-box">
         <h1>🏸 Pronos AOBD</h1>
@@ -78,17 +69,16 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# --- IMAGE 1 : L'ÉQUIPE (Mise en valeur sous le titre) ---
-# Note : Remplace 'equipe.jpg' par le nom exact de ton fichier sur GitHub
+# --- IMAGE 1 : L'ÉQUIPE (Noms de fichiers mis à jour) ---
 try:
-    st.image("image_c4425f.jpg", use_container_width=True, caption="L'équipe AOBD Saint-Nolff")
-except:
-    st.info("📸 Photo d'équipe à venir...")
+    st.image("image_c4425f.jpg.jpeg", use_container_width=True, caption="L'équipe AOBD Saint-Nolff")
+except Exception:
+    st.info("📸 Photo d'équipe (Vérifie le nom du fichier sur GitHub)")
 
-# MESSAGE ADMIN
+# MESSAGE DE L'ADMIN
 st.markdown(f'<div class="admin-msg">📢 {load_message()}</div>', unsafe_allow_html=True)
 
-# 3. INTERFACE JOUEUR (VOTE)
+# 3. INTERFACE JOUEUR
 st.subheader("1️⃣ Ton Prono")
 nom = st.text_input("Prénom & Nom :", placeholder="Ex: Lucas B").strip()
 
@@ -132,12 +122,12 @@ if not df_scores.empty:
     df_scores["Évolution"] = df_scores.apply(get_evolution_label, axis=1)
     st.table(df_scores[["Rang", "Évolution", "Joueur", "Points"]].set_index("Rang"))
 else:
-    st.info("Le classement arrivera après le premier match !")
+    st.info("Le classement arrivera bientôt !")
 
-# --- IMAGE 2 : LES SUPPORTERS (En bas de page pour le fun) ---
+# --- IMAGE 2 : LES SUPPORTERS ---
 try:
-    st.image("image_c4423b.jpg", use_container_width=True, caption="Ici c'est Tournesol ! 🐺")
-except:
+    st.image("image_c4423b.jpg.jpeg", use_container_width=True, caption="La Meute fait la loi ! 🐺")
+except Exception:
     pass
 
 # 5. ESPACE ADMIN
@@ -172,16 +162,20 @@ with st.expander("🛠️ Admin"):
 
         with tab2:
             df_v = load_data(VOTES_FILE)
-            st.write(df_v[["Joueur"]] if not df_v.empty else "Aucun vote")
+            if not df_v.empty:
+                st.write(f"Nombre de votes : {len(df_v)}")
+                st.dataframe(df_v[["Joueur"]], use_container_width=True)
+            else:
+                st.info("Aucun vote en cours.")
 
         with tab3:
-            new_msg = st.text_area("Message :", load_message())
-            if st.button("Ok"):
+            new_msg = st.text_area("Texte de l'annonce :", load_message())
+            if st.button("Mettre à jour"):
                 save_message(new_msg)
                 st.rerun()
 
         with tab4:
-            if st.button("TOUT SUPPRIMER"):
+            if st.button("🗑️ RESET TOTAL"):
                 for f in [SCORES_FILE, VOTES_FILE]:
                     if os.path.exists(f): os.remove(f)
                 st.rerun()
