@@ -32,20 +32,29 @@ def load_message():
             return f.read()
     return "Préparez vos pronos pour la prochaine rencontre !"
 
-# 2. DESIGN ANTI-MODE SOMBRE (FORÇAGE DES COULEURS)
+# 2. DESIGN FORCE (ANTI-MODE SOMBRE)
 st.markdown("""
     <style>
-    /* Forcer le fond blanc et le texte noir pour tout l'appli (évite les bugs mode sombre iPhone) */
+    /* On force les couleurs de base de Streamlit pour écraser le mode sombre */
+    :root {
+        --primary-color: #d32f2f;
+        --background-color: #ffffff;
+        --secondary-background-color: #f0f2f6;
+        --text-color: #31333F;
+        --font: 'sans serif';
+    }
+
+    /* Forçage du fond de l'application */
     .stApp {
         background-color: white !important;
+    }
+
+    /* Forçage de la couleur de TOUS les textes en gris très foncé/noir */
+    .stApp, .stApp p, .stApp span, .stApp label, .stApp h1, .stApp h2, .stApp h3, .stMarkdown {
         color: #31333F !important;
     }
 
-    /* Forcer la visibilité des textes dans les boutons radio et inputs */
-    label, p, span, div {
-        color: #31333F !important;
-    }
-
+    /* Header Rouge (Lui reste en blanc sur rouge) */
     .header-box { 
         background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
         padding: 25px; 
@@ -54,44 +63,49 @@ st.markdown("""
         box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         margin: -60px -20px 20px -20px;
     }
-    .header-box h1 { color: white !important; font-size: 1.8rem !important; font-weight: 800; margin-bottom: 8px; }
-    .header-box p { color: #ffeb3b !important; font-size: 0.9rem !important; font-weight: 500; }
+    .header-box h1 { color: white !important; }
+    .header-box p { color: #ffeb3b !important; }
     
-    .admin-msg {
+    /* Message Admin & Match Headers */
+    .admin-msg, .match-header {
         background-color: #f0f2f6 !important; 
-        padding: 15px;
-        border-radius: 12px;
-        text-align: center;
-        font-weight: 600;
-        margin: 15px 0;
         color: #31333F !important;
+        border-radius: 12px;
     }
-
-    .match-header { 
-        background-color: #f0f2f6 !important; 
+    
+    .match-header {
         padding: 10px 15px; 
-        font-weight: 700; 
-        color: #000000 !important;
+        font-weight: 700;
         display: flex;
         align-items: center;
         gap: 10px;
-        border-radius: 8px;
+        margin-top: 10px;
     }
-    
+
+    /* Boutons de validation */
     .stButton>button {
-        width: 100%;
-        border-radius: 12px;
-        height: 3.5em;
         background-color: #f0f2f6 !important;
         color: #31333F !important;
-        font-weight: bold;
         border: 1px solid #d1d5db !important;
+        border-radius: 12px;
+        height: 3.5em;
+        font-weight: bold;
     }
-    
-    /* Forcer le texte noir dans le tableau de classement */
-    .stTable td, .stTable th {
-        color: black !important;
+
+    /* Forcer le tableau en mode clair */
+    .stTable {
         background-color: white !important;
+    }
+    .stTable td, .stTable th {
+        color: #31333F !important;
+        background-color: white !important;
+        border-bottom: 1px solid #f0f2f6 !important;
+    }
+
+    /* Masquer les bordures de focus rouges moches sur iPhone */
+    input:focus {
+        border-color: #d32f2f !important;
+        box-shadow: none !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -133,13 +147,13 @@ if nom:
             horizontal=True, 
             label_visibility="collapsed"
         )
-        st.markdown('<div style="margin-bottom:15px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="margin-bottom:10px;"></div>', unsafe_allow_html=True)
         
     if st.button("🚀 VALIDER MA GRILLE"):
         df_v = load_data(VOTES_FILE)
         
         if not df_v.empty and nom.lower() in df_v["Joueur"].str.lower().values:
-            st.error(f"Désolé {nom}, tu as déjà validé tes pronos ! 🐺")
+            st.error(f"Oups {nom}, tu as déjà voté ! 🐺")
         else:
             nouveau_vote = {"Joueur": nom}
             cleaned_pronos = {k: ("St-Nolff" if v == "St-Nolff 🐺" else v) for k, v in pronos.items()}
@@ -147,7 +161,7 @@ if nom:
             
             df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
             save_data(df_v, VOTES_FILE)
-            st.success("Grille validée ! Bonne chance la meute 🐺")
+            st.success("Grille validée ! Aouuuuuuh 🐺")
             st.balloons()
 
 st.divider()
@@ -173,7 +187,7 @@ if not df_scores.empty:
     df_scores["Évo"] = df_scores.apply(get_evolution_label, axis=1)
     st.table(df_scores[["Rang", "Évo", "Joueur", "Points"]].set_index("Rang"))
 else:
-    st.info("Le classement sera mis à jour après la validation des résultats.")
+    st.info("Le classement arrive après le premier match.")
 
 # --- PHOTO SUPPORTERS ---
 try:
@@ -189,7 +203,7 @@ with st.expander("🛠️ Administration"):
         t1, t2, t3, t4 = st.tabs(["Résultats", "Votes", "Message", "Reset"])
         with t1:
             reels = {m[0]: st.selectbox(f"{m[0]}", ["St-Nolff", "Adversaire"], key=f"adm_{m[0]}") for m in match_data}
-            if st.button("Valider les résultats"):
+            if st.button("Calculer la journée"):
                 df_v = load_data(VOTES_FILE)
                 if not df_v.empty:
                     df_gen = load_data(SCORES_FILE)
@@ -211,18 +225,18 @@ with st.expander("🛠️ Administration"):
                     st.rerun()
         
         with t2:
-            st.write("### Liste des votants du jour")
+            st.write("### Liste des votants")
             df_v = load_data(VOTES_FILE)
             if not df_v.empty:
                 st.dataframe(df_v[["Joueur"]].reset_index(drop=True), use_container_width=True)
             else:
-                st.info("Aucun vote enregistré.")
+                st.info("Aucun vote.")
 
         with t3:
             msg = st.text_area("Annonce :", load_message())
-            if st.button("Mettre à jour"):
+            if st.button("Valider l'annonce"):
                 save_message(msg); st.rerun()
         with t4:
-            if st.button("RESET CLASSEMENT"):
+            if st.button("RESET TOUT"):
                 if os.path.exists(SCORES_FILE): os.remove(SCORES_FILE)
                 st.rerun()
