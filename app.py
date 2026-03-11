@@ -56,17 +56,22 @@ st.markdown(f'<div class="info-box">📢 {load_info()}</div>', unsafe_allow_html
 
 # 3. INTERFACE JOUEUR (VOTE)
 st.subheader("1️⃣ Fais ton prono !")
-nom = st.text_input("Ton Prénom & Nom :", placeholder="Ex: Lucas B").strip()
+nom_input = st.text_input("Ton Prénom & Nom :", placeholder="Ex: Lucas B").strip()
 
 matchs = ["Simple Homme 1", "Simple Homme 2", "Simple Dame 1", "Simple Dame 2", 
           "Double Homme", "Double Dame", "Mixte 1", "Mixte 2"]
 
-if nom:
+if nom_input:
     df_v_check = load_data(VOTES_FILE)
-    deja_vote = not df_v_check.empty and nom in df_v_check['Joueur'].values
+    
+    # Vérification si le joueur a déjà voté
+    deja_vote = False
+    if not df_v_check.empty and "Joueur" in df_v_check.columns:
+        if nom_input.lower() in df_v_check["Joueur"].str.lower().values:
+            deja_vote = True
 
     if deja_vote:
-        st.warning(f"⚠️ {nom}, tu as déjà validé tes pronos pour cette rencontre !")
+        st.warning(f"⚠️ {nom_input}, tu as déjà validé tes pronos pour cette rencontre !")
     else:
         pronos = {}
         for m in matchs:
@@ -75,7 +80,7 @@ if nom:
         
         if st.button("🚀 ENREGISTRER MON VOTE"):
             df_v = load_data(VOTES_FILE)
-            nouveau_vote = {"Joueur": nom}
+            nouveau_vote = {"Joueur": nom_input}
             nouveau_vote.update(pronos)
             df_v = pd.concat([df_v, pd.DataFrame([nouveau_vote])], ignore_index=True)
             save_data(df_v, VOTES_FILE)
@@ -113,15 +118,36 @@ with st.expander("🛠️ ACCÈS ADMINISTRATEUR"):
     mdp = st.text_input("Code secret :", type="password")
     
     if mdp == "2003":
-        tab1, tab2, tab3, tab4 = st.tabs(["📢 Annonce", "✅ Résultats", "👥 Votes", "⚠️ Danger"])
+        # CRÉATION DES ONGLETS BIEN DISTINCTS
+        tab_ann, tab_res, tab_vot, tab_dan = st.tabs(["📢 Annonce", "✅ Résultats", "👥 Votes", "⚠️ Danger"])
 
-        with tab1:
+        with tab_ann:
             st.write("### Modifier l'annonce")
-            nouvelle_info = st.text_area("Ex: Match contre Vannes à domicile - Jeudi 20h", value=load_info())
+            nouvelle_info = st.text_area("Ex: Match contre Vannes - Jeudi 20h", value=load_info())
             if st.button("Mettre à jour l'annonce"):
                 save_info(nouvelle_info)
                 st.success("Annonce mise à jour !")
                 st.rerun()
 
-        with tab2:
+        with tab_res:
             st.write("### Valider la rencontre")
+            reels = {m: st.selectbox(f"Gagnant {m}", ["-", "St-Nolff", "Adversaire"], key=f"adm_{m}") for m in matchs}
+            if st.button("✅ CALCULER LES POINTS ET CLOTURER"):
+                df_v = load_data(VOTES_FILE)
+                if df_v.empty:
+                    st.error("Aucun vote enregistré pour le moment !")
+                elif any(v == "-" for v in reels.values()):
+                    st.error("Veuillez remplir TOUS les résultats.")
+                else:
+                    df_gen = load_data(SCORES_FILE)
+                    
+                    # Sauvegarde du rang actuel pour l'évolution
+                    if not df_gen.empty:
+                        df_gen = df_gen.sort_values(by="Points", ascending=False).reset_index(drop=True)
+                        df_gen['AncienRang'] = range(1, len(df_gen) + 1)
+                    else:
+                        df_gen = pd.DataFrame(columns=["Joueur", "Points", "AncienRang"])
+
+                    # Calcul des points par joueur
+                    for index, row in df_v.iterrows():
+                        joueur = row['Joueur']
